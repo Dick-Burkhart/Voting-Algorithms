@@ -1,0 +1,2 @@
+'Output file, Output level, UVP parm, 1st district #, last district #:',  'Pre0.txt', 0.5, 1,  1,40
+'Rating type, Top # candidates, Max # pt_val levels:',  -1, 6, 7

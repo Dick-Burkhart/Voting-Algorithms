@@ -1,0 +1,1 @@
+'out_file, pr_out, dst1,dst2. Tourn_union, full', 'DomS12p.txt', 1,  12, 12,  -2, 0.15
