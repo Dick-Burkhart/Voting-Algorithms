@@ -1,0 +1,162 @@
+40, 14              !  Data:  (# districts, max # candidates)  (file type, # candidates, # to be elected, affliations?, location, year)
+'PRC_Executive',   1,  4, 2, 1,   'Pierce_County', 2008,          1
+  'UN1', 'UN2', 'UN3', 'UN4'
+'PRC_Assessor',   1,  6, 3, 1,   'Pierce_County', 2008,           2
+  'UN1', 'UN2', 'UN3', 'UN4', 'UN5', 'UN6'
+'Anderston',        1,  9, 4, 1,   'Glasgow', 2007,               3     
+  'GRE', 'CON', 'LAB', 'IND', 'SOL', 'LIB', 'SNP', 'LAB', 'SOC'
+'Baillieston',      1, 11, 4, 1,   'Glasgow', 2007,               4
+  'CON', 'LAB', 'UNI', 'LAB', 'SOL', 'LAB', 'SNP', 'SNP', 'SOC', 'GRE', 'LIB'
+'Calton',           1, 10, 3, 1,   'Glasgow', 2007,               5
+  'IND', 'GRE', 'SOL', 'CON', 'LIB', 'UNI', 'SOC', 'LAB', 'LAB', 'SNP'
+'CambridgeSchools', 1, 14, 6, 1,   'Cambridge_MA', 2003,          6
+  'UN1', 'UN2', 'UN3', 'UN4', 'UN5', 'UN6', 'UN7', 'UN8', 'UN9', 'U10', 'U11', 'U12', 'U13', 'U14'
+'Canal',            1, 11, 4, 1,   'Glasgow', 2007,               7
+  'UNI', 'IND', 'LIB', 'LAB', 'CON', 'LAB', 'LAB', 'SNP', 'SOL', 'SOC', 'GRE'
+'Craighton',        1, 10, 4, 1,   'Glasgow', 2007,               8
+  'SOL', 'LIB', 'UNI', 'SNP', 'LAB', 'LAB', 'GRE', 'SOC', 'CON', 'LAB'
+'Drumchapel',       1, 10, 4, 1,   'Glasgow', 2007,               9
+  'LAB', 'GRE', 'SOC', 'LAB', 'UNI', 'SNP', 'LIB', 'CON', 'SOL', 'LAB'
+'DublinNorth',      2, 12, 4, 1,   'Dublin', 2007,               10
+  'FG ', 'SP ', 'SF ', 'FF ', 'IND', 'FF ', 'FG ', 'IND', 'LAB', 'GP ', 'CSP', 'FF '
+'DublinWest',       2,  9, 3, 1,   'Dublin', 2007,               11
+  'GP ', 'LAB', 'FF ', 'FF ', 'SP ', 'FF ', 'SF ', 'PD ', 'CSP'
+'Eastcentre',       1, 13, 4, 1,   'Glasgow', 2007,              12
+  'SOL', 'LAB', 'GRE', 'UNI', 'LAB', 'SNP', 'LIB', 'CHR', 'PEO', 'LAB', 'BNP', SOC', 'CON' 
+'Garscadden',       1, 10, 4, 1,   'Glasgow', 2007,              13
+  'SOL', 'LAB', 'GRE', 'UNI', 'SNP', 'SOC', 'LAB', 'LIB', 'LAB', 'CON'
+'Govan',            1, 11, 4, 1,   'Glasgow', 2007,              14
+  'LAB', 'LIB', 'LAB', 'LAB', 'UNI', 'SNP', 'GRE', 'SOL', 'CON', 'IND', 'SOC'
+'GreaterPollock',   1,  9, 4, 1,   'Glasgow', 2007,              15
+  'SOC', 'LIB', 'SNP', 'LAB', 'LAB', 'CON', 'LAB', 'GRE', 'SOL'
+'Hillhead',         1, 10, 4, 1,   'Glasgow', 2007,              16
+  'CON', 'NIN', 'LIB', 'SOC', 'LIB', 'SOL', 'LAB', 'LAB', 'SNP', 'GRE'
+'Langside',         1,  8, 3, 1,   'Glasgow', 2007,              17
+  'LIB', 'SNP', 'SOL', 'LAB', 'LAB', 'GRE', 'CON', 'SOC'
+'Linn',             1, 11, 4, 1,   'Glasgow', 2007,              18
+  'CON', 'LIB', 'LAB', 'IND', 'UNI', 'LAB', 'SNP', 'LAB', 'GRE', 'SOC', 'SOL'
+'Maryhill',         1,  8, 4, 1,   'Glasgow', 2007,              19
+  'SNP', 'SOC', 'LIB', 'CON', 'LAB', 'GRE', 'SOL', 'LAB'
+'Meath',            2, 14, 5, 1,   'Glasgow', 2007,              20
+  'FF ', 'FG ', 'IND', 'FF ', 'FG ', 'FG ', 'IND', 'IND', 'IND', 'GP ', 'CSP', 'SF ', 'FF ', 'LAB'
+'Newlands',         1,  9, 3, 1,   'Glasgow', 2007,              21
+  'GRE', 'BNP', 'SOC', 'LAB', 'SNP', 'CON', 'LAB', 'SOL', 'LIB'
+'Northeast',        1, 10, 4, 1,   'Glasgow', 2007,              22
+  'LAB', 'CON', 'LAB', 'GRE', 'LIB', 'LAB', 'SOC', 'SOL', 'IND', 'SNP'
+'Patrickwest',      1,  9, 4, 1,   'Glasgow', 2007,              23
+  'UNI', 'GRE', 'LAB', 'LAB', 'SOC', 'LIB', 'SNP', 'SOL', 'CON'
+'Pollockshields',   1,  9, 3, 1,   'Glasgow', 2007,              24
+  'SOC', 'IND', 'SNP', 'CON', 'LIB', 'LAB', 'GRE', 'IND', 'SOL'
+'Shettleston',      1, 11, 4, 1,   'Glasgow', 2007,              25
+  'SOC', 'BNP', 'SOL', 'LIB', 'UNI', 'GRE', 'LAB', 'SNP', 'LAB', 'LAB', 'CON'
+'Southside',        1,  9, 4, 1,   'Glasgow', 2007,              26
+  'GRE', 'SNP', 'SOC', 'CON', 'LIB', 'SOL', 'LAB', 'LAB', 'LAB'
+'Springburn',       1, 10, 3, 1,   'Glasgow', 2007,              27
+  'SOC', 'SOL', 'CON', 'SNP', 'GRE', 'UNI', 'BNP', 'LAB', 'LIB', 'LAB'
+'Burlington2006',   1,  6, 2, 1,   'Burlington_VA', 2006,        28
+  'IND', 'IND', 'PRO', 'DEM', 'REP', 'WRI'
+'Burlington2009',   1,  6, 2, 1,   'Burlington_VA', 2009,        29
+  'PRO', 'DEM', 'GRE', 'IND', 'REP', 'WRI'
+'East_Berwickshire',   1,  7, 3, 1, 'Scottish_Borders', 2012,    30
+  'SNP', 'IND', 'CON', 'IND', 'LAB', 'BOR', 'LIB'
+'Galashiels',   1,  7, 4, 1,   'Scottish_Borders', 2012,         31
+  'BOR', 'SNP', 'LIB', 'CON', 'SNP', 'LAB', 'IND'
+'Hawick_Denh',   1,  7, 3, 1,   'Scottish_Borders', 2012,        32
+  'IND', 'SNP', 'BOR', 'CON', 'COP', 'IND', 'LIB'
+'Hawick_Herm',   1,  7, 3, 1,   'Scottish_Borders', 2012,        33
+  'LAB', 'GRN', 'BOR', 'IND', 'LIB', 'SNP', 'CON'
+'Jedburgh',   1,  7, 3, 1,   'Scottish_Borders', 2012,           34
+  'LIB', 'SNP', 'BOR', 'CON', 'LAB', 'IND', 'CON'
+'Kelso',   1,  8, 3, 1,   'Scottish_Borders', 2012,              35
+  'IND', 'IND', 'BOR', 'CON', 'LIB', 'GRN', 'SNP', 'CON'
+'Leaderdale',   1,  6, 3, 1,   'Scottish_Borders', 2012,         36
+  'LAB', 'CON', 'IND', 'LIB', 'SNP', 'BOR'
+'Mid_Berwickshire',   1,  5, 3, 1,   'Scottish_Borders', 2012,   37
+  'CON', 'CON', 'BOR', 'SNP', 'LIB'
+'Selkirkshire',   1,  6, 3, 1,   'Scottish_Borders', 2012,       38
+  'CON', 'BOR', 'LIB', 'IND', 'SNP', 'IND'
+'Tweeddale_East',   1,  6, 3, 1,   'Scottish_Borders', 2012,     39
+  'SNP', 'LIB', 'CON', 'LIB', 'BOR', 'LAB'
+'Tweeddale_West',   1,  6, 3, 1,   'Scottish_Borders', 2012,     40
+  'SNP', 'LIB', 'CON', 'LIB', 'BOR', 'LAB'
+
+Ireland:
+  'FF ' = Fianna Fáil
+  'FG ' = Fine Gael
+  'GP ' = Green Party
+  'IND' = Independent
+  'LAB' = Labour Party
+  'PD ' = Progressive Democrats
+  'SF ' = Sinn Féin
+  'SP ' = Socialist Party
+
+  'CSP' = Christian Solidarity Party
+
+Scotland (main parties, then lesser):
+  'CON' = Conservative Party
+  'GRE' = Scottish Green Party
+  'LAB' = Labour Party
+  'LIB' = Liberal Democrats
+  'SNP' = Scottish National Party
+  'SSP' = Scottish Socialist Party
+  'SLP' = Scottish Labor Party'
+
+  'BNP' = British National Party
+  'PEO' = Christian Peoples Alliance?
+  'SOC' = ?
+  'SOL' = Solidarity
+  'UNI' = ?
+
+Scottish_Borders:
+  'BOR' = The Borders Party
+  'CON' = Scottish Conservative and Unionist Party
+  'COP' = The Scottish Labour and Co-operative Party
+  'GRN' = Scottish Green Party
+  'IND' = Independent
+  'LAB' = Labour Party
+  'LIB' = Scottish Liberal Democrats
+  'SNP' = Scottish National Party
+
+US: 
+  'DEM' = Democrat
+  'GRE' = Green
+  'IND' = Independent
+  'PRO' = Progressive
+  'REP' = Republican
+  'WRI' = Write-in
+
+Glasgow 2007 City Council (21 wards): Anderston, Baillieston, Calton, Canal, Craighton, Drumchapel, Eastcentre, 
+Garscadden, Govan, GreaterPollock, Hillhead, Langside, Linn, Maryhill, Newlands, Northeast, Patrickwest,
+Pollockshields, Shettleston, Southside, Springburn
+
+Irish Parliament 2007 (Dáil) (2): DublinNorth, DublinWest
+
+Cambridge 2003 School Committee (1): CambridgeSchools
+
+Burlington, Vermont (2): Burlington2006,  Burlington2009
+
+Scottish_Borders Council (a district just SE of Edinburgh, Scotland), May, 2012, elections: 
+  Tweeddale_West, Tweeddale_East, Galashiels, Selkirkshire, Leaderdale, Mid_Berwickshire, 
+  East_Berwickshire, Kelso, Jedburgh, Hawick_Denh, Hawick_Herm
+
+Glasgow and Dublin 2007 election results were sent by Dr. James Gilmour of Ireland, expert on STV. 
+More recent Republic of Ireland (includes Dublin) parliamentary election in 2011, used since 1922 for Assembly, European Parliament, and local elections.
+Also used by Northern Ireland. IRV (= 'alernative vote') used for single postions, such as President.
+Newer Scottish elections in 2012.
+
+Pierce Count 2008 IRV elections, for top 3 instead of top 1 (1): PRC_Executive_1, (2) PRC_Assessor_1
+(2) Executive's race: Candidate 1 = Mike Lonergan, 2 = Pat McCarthy, 3 = Calvin Goings, 4 = Shawn Bunny
+(2) Assessor's  race: Candidate 1 = Dale Washam, 2 = Terry Lee, 3 = Jan Shabro, 4 = Bernardo Tuma, 5 = Barbara Gelman, 6 = Beverley Davidson
+https://www.piercecountywa.gov/2940/Ranked-Choice-Results 
+
+PRO / CON on STV:  https://www.tcd.ie/Political_Science/staff/michael_gallagher/IrishElectSys.php
+Public software: OpenSTV
+
+** How to insert commas to replace spaces with MS Word: Replace one space by a comma followed by a space using the "match suffix" option.
+file type:  
+  1  : for candidates listed in decreasing order of ranking
+  0  : for candidates in increasing or other order with corresponding ratings required on a second line, with 1 = lowest rating
+  -1 : a ranking for each candidate, with 0 for unrated candidates, with 1 = highest ranking
+  -2 : a rating  for each candidate, with 0 for unrated candidates, with 1 = lowest rating
+
+Summary: 5 districts from the US (Pierce County WA, Burlington VT, Cambridge MA), 33 from Scotland (22 from Glasgow, 11 from Scottish-Borders), 2 from Ireland (Dublin).
