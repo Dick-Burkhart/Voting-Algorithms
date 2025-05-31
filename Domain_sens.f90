@@ -1,42 +1,40 @@
-
-!  This program implements a Tournament algorithm for Proportional Representation, 
-!  using Nic Tideman's concept for a pairwise tournament between competing possible
-!  sets of elected candidates, except that my clustering full objective functions are 
-!  used to compare the pairs of sets instead of STV concepts. 
-    
-!  Created and tested by Dick Burkhart, April 5, 2025
-    
-!  The point here is that the top elected set may differ when it is computed for
-!  a domain of candidates that is a proper subset of the full set. For example,
-!  we could consider all subsets of size 2*np, where 'np' = # candidates to be
-!  elected. Pairs of sets 'A' and 'B' are compared for each such subset, 
-!  provided that both are subsets of the domain in question. My clustering 
-!  algorithm automatically orders all such subsets by the 'fitness'
-!  objective applied to the top cluster set for the domain. 
-    
-!  But different domains will yield different collections of subsets to be
-!  compared, with one always being on top. The simplest rule for determining 
-!  the winner of the tournament would be to choose the set 'A' which is the
-!  top set for the most number of domains N(A). But it is more informative to 
-!  compare the full objective O(A) of 'A' to the full objective O(B) for 'B'
-!  for each such domain, where 'B' can be restricted to being 'competitive' 
-!  to reduce the computational load. Here we have chosen 'competitve' to mean 
-!  that 'B' is itself the top elected set for at least 2 domains.
-    
-!  To quantify the comparison, we sum the O(B) over the domains for which
-!  'A' is the top elected set, skipping those which do not contain 'B',
-!  to get S(B,A), identifying the most competitive set 'B' as the one with
-!  the maximum S(B,A). S(B,A) is what replaces the simple count N(A). That is, 
-!  the overall top elected set 'A' is the one which maximizes S(B,A). 
-    
 Program Domain_sens   
 
-   Use Clusters0  ! Contains parameters
-   Use Clusters1  ! Contains "Read_ballots" and its subroutines
-   Use Clusters2  ! Contains "Consolidate_ballots" and its subroutines
-   Use Clusters3  ! Contains "Form_clusters" and its subroutines
-   Use Clusters4  ! Contains "Evaluate_candidates" and its subroutines
-   Use Clusters6  ! Contains "Run_input" and subroutines for run statistics
+!  This program implements uses PR_clustering to test the sensitivity of clustering 
+!  and non-clustering methods to perturbations or changes in the domain as a subset 
+!  of the full set of candidates 1...nc. This is related  to Nic Tideman's concept 
+!  for a pairwise tournament between competing sets of candidates, with winning set 
+!  to be elected. Except that my clustering full objective functions are used to compare 
+!  the pairs of sets instead of STV concepts. 
+
+!  The domains may be either subsets of size nc – 2 or subsets of np+1 through 2*np, 
+!  where np candidates are to be elected. The second method is like Tideman’s Tournament 
+!  algorithm, where 2 competing sets of size np are compared on the domain consisting of their union. 
+
+!  The point of a sensitivity test is that the best elected set may differ when it is computed 
+!  for a domain of candidates that is a proper subset of the full set because the proportionality 
+!  may be affected. To demonstrate this I compute the full objective function for the elected 
+!  set on the domain ‘D’ in question. 
+    
+!  To compare 2 subsets A’ and ‘B’ of ‘D’ I use the ratio Rd(A,B) = Fd(A) / Fd(B) of their 
+!  full objective functions Fd for the top cluster set of ‘D’. Then the overall objective 
+!  function for ‘A’ becomes a weighted average Sd(A) of a function of Rd(A,B) over all 
+!  distinct sets ‘B’ over all domains ‘D’ containing both ‘A’ and B’, weighted by the 
+!  cluster set objective for the top cluster set of ‘D’.
+
+!  However, it is surprisingly effective to just use N(A) = number of domains for which ‘A’ 
+!  is the top elected set. In fact, to determine the “winner”, we  restrict our search 
+!  to sets ‘A’ which are the top elected set (= the set with the best fitness) for at 
+!  least one domain. Then Sd(A) could be used as a tie breaker.
+    
+!  Note that computational load may limit the # districts that can be processed on one run    
+    
+   Use Clusters0  ! Contains run parameters
+   Use Clusters1  ! Contains "Read_ballots0" and "Domain_ballots" and thier subroutines
+   Use Clusters2  ! Contains "Consol1_ballots" and its subroutines
+   Use Clusters3  ! Contains "Form_clust1" and its subroutines
+   Use Clusters4  ! Contains "Possible_electeds" and related subroutines
+   Use Clusters6  ! Contains subroutines for input and statistics
 
    Use Newton_operators
    Use Factorials
@@ -44,24 +42,22 @@ Program Domain_sens
    Use Precisn
    Implicit None
 
-!  Variables for "Run_input":
+!  Data structcures for Domain_input and Read_ballots0 (ballot input)
    
    Character(18), Pointer :: District(:)=>Null()   ! (mx_Dist) List of voting districts to be processed (input)
    Character(3),  Pointer :: Party(:,:)=>Null()    ! (mxCand,mx_Dist) Party affiliation of each candidate for each district, if any
    Integer,       Save    :: Rnd_seed(2,mx_Dist)   ! Random seed for each district, to be use for 'Mean_rnd'
+   Real,          Pointer :: Noise_pr(:)=>Null()   ! Prior computed values of Noise_cor by district
 
-!  For parameter sensitivity statistics:
-   
-!  Data structures for processed ballots: Read_ballots
+   Integer              :: nb0           ! Initial # ballots for a district
+   Real,    Allocatable :: wtb0(:)       ! (nb0) Initial ballot weights, summing to np
+   Integer, Allocatable :: ballot0(:,:)  ! (0:mrc,nb0) Initial ballots. (1:n,b) = candidates in preferential order
+                                         !                              (0,b)   = # candidates ranked or rated     
+   Integer          :: nb                    ! # ballots in a subdomain
+   Real,    Pointer :: wtb(:)=>Null()        ! (nb) ballot weights for the subdomain
+   Integer, Pointer :: ballot(:,:)=>Null()   ! (0:mr,nb) ballots for the subdomain
 
-   Real,    Pointer :: wtb(:)=>Null()        ! (nb) Ballot weights summing to 'np'
-   Integer, Pointer :: ballot(:,:)=>Null()   ! (0:mr,nb)  (1:n,b) = candidates in preferential order
-                                             !   (0,b) = 'n' = # ranked or rated  
-   Real,    Pointer :: global(:,:)=>Null()   ! (nc,5) Global ballot mean (1) & sigma (2) vectors
-                                             !    with noise mean (3) and its sigma (4), plus
-                                             !   normalized mean rating above the noise (5)
-   
-!  Data structcures for ballot consolidation into slate clusters
+!  Data structcures for Consol1_ballots (consolidation to slate ballots)
    
    Type(Multi_listD), Pointer :: Memb(:)=>Null() ! (0:nsl) Final slate cluster data
                                                  ! 0 Case: 
@@ -96,7 +92,7 @@ Program Domain_sens
                                            ! bounds assumed, also non-centered for ranking and 
                                            ! not normalized. (0,:,:) = cluster weight 
 
-!  Additional Variables for "Form_clusters":
+!  Data structcures for "Form_clust1" (converge to cluster sets)
      
      Type(Multi_listR) :: Init(N_init)     ! Initial cluster set data
                                            ! %k = cluster set converged to
@@ -193,17 +189,14 @@ Program Domain_sens
                                              !      (:,0,1)  = Zrate0 * declining regular portion factor
                                              !      (:,0,2)  = Zrate0 = cluster averaged noise zeroed mean vectors
 
-!  For 'Tourn_rem':
-
-   Integer            :: nc_lim= 9    ! Max # candidates - to reduce the computational load
-   Real,    Parameter :: eps= 0.001   
-   Real               :: full         ! Limit parameter for the rising cosine dominance function
-
-   Integer,      Save :: Tourn_union  ! 1 = Make all domains = union of 2 possible elected sets of size 'np'
-                                      ! < 0 Domains = all subsets of size n0-2 of a domain of size n0,
-                                      !     or other domain or processing options 
-
-   Character(1) :: c1(9)= (/"1","2","3","4","5","6","7","8","9"/)
+!  Data structcures for "Possible_electeds" (list possible elected sets for each domain)
+     
+   Integer, Allocatable :: ncp(:)        ! (n1:n2) N_subsets(nc,np)
+   Integer, Allocatable :: Subi(:)       ! (msub) Subset index in 'subU' for each tested subset
+   Integer, Allocatable :: subU(:,:)     ! (0:n2,nsub) List of subsets of (1...n0) of size <= n2
+                                         !   where (0,i)= size of subset 'i' & n2 = size of A U B
+   Real,    Allocatable :: cls_obj(:)    ! (msub) Top cluster set objective
+   Real,    Allocatable :: tot_wt(:)     ! (msub) Reduced total weight for each domain
 
    Type(Multi_listR), Allocatable :: Clust_elc(:) ! (msub) Data for sets of electeds associated to the
                                                   !        top cluster set of each domain
@@ -222,8 +215,28 @@ Program Domain_sens
                                                   ! %sx(nc) = Domain average candidate scores
                                                   ! %vl(nc) = Domain reordering by average candidate scores
 
-   Integer, Allocatable :: subU(:,:)     ! (0:n2,nsub) List of subsets of (1...n0) of size <= n2
-                                         !   where (0,i)= size of subset 'i' & n2 = size of A U B
+!  Data structcures for 'Domain_sens':
+
+   Real, Parameter :: eps= 0.001   
+   Character(1)    :: c1(9)= (/"1","2","3","4","5","6","7","8","9"/)
+
+   Integer            :: nc_lim= 9    ! Max # candidates - to reduce the computational load
+   Real               :: full         ! Input: Limit parameter for the rising cosine dominance function
+
+   Integer,      Save :: Sens_opt     ! Input: 1 : Domains = union of 2 possible elected sets of size 'np'
+                                      ! < 0 : Domains = all subsets of size n0-2 of a domain of size n0
+                                      !  -1 : Process by comparing dominance values of top sets (dmv => Sdv)
+                                      !  -2 : Process by summing dominance values for each top set (Sdv)
+
+   Integer, Save :: Tr_mat(-1:nMt,2)  ! Adds up, over districts, matches of the top elected set by 
+                                      !   (-1,1) domain count top set = dominance formula top set
+                                      !   (0,1)  clustering top set   = dominance formula top set
+                                      !   (>0,1) non-clustering top set = dominance formula top set
+                                      !   (0,2)  clustering top set   = domain count top set
+                                      !   (>0,2) non-clustering top set = domain count top set
+
+   Integer, Save :: Elc_pr(5,0:nMt,40)   ! Previously computed top elected sets, read from 'Top_dat1.txt',
+                                         ! with (0) = clustering and (1:nMt) = non-clustering 
 
    Integer, Allocatable :: elc1(:,:)     ! (tp,2)  (:,1) = top_elc(:,dm1), (:,2) = top_elc(:,tp1)
    Logical, Allocatable :: dom0(:,:)     ! (n0,md) True on a domain
@@ -235,13 +248,6 @@ Program Domain_sens
    Integer, Allocatable :: keyD(:)       ! (tp) Reordering key for Sdv
    Integer, Allocatable :: keyT(:)       ! (tp) Reordering key for tpN
 
-   Real,    Allocatable :: tot_wt(:)     ! (msub) Reduced total weight for each domain
-   Real,    Allocatable :: cls_obj(:)    ! (msub) Top cluster set objective
-   Integer, Allocatable :: Subi(:)       ! (msub) Subset index in 'subU' for each tested subset
-   Integer, Allocatable :: ncp(:)        ! (n1:n2) N_subsets(nc,np)
-
-   Real,    Allocatable :: wtb0(:)       ! (nb0)
-   Integer, Allocatable :: ballot0(:,:)  ! (0:mrc,nb0)
    Integer, Allocatable :: top_elc(:,:)  ! (0:np,md) Top sets of domains (1:np,:) and their # (0,:)
    Integer, Allocatable :: mp(:)         ! (md)  Mapping from domains to their top sets top_elc(1:,:)
    Integer, Allocatable :: domain(:)     ! (nc)  
@@ -250,15 +256,7 @@ Program Domain_sens
    Integer :: tp1   ! Top set for domain count 'top_elc'
    Integer :: dm1   ! Top set for dominance values 'Sdv'
 
-   Integer, Save :: Tr_mat(-1:nMt,2)
-
-   Real, Pointer :: Noise_pr(:)=>Null()  ! Prior computed values of Noise_cor by district
-
-   Integer, Save :: Elc_pr(5,0:nMt,40)   ! Previously computed top elected sets, read from 'Top_dat1.txt',
-                                         ! with (0) = clustering and (1:nMt) = non-clustering 
    Integer :: ncs    ! Total # cluster sets converged to 
-   Integer :: nb0    ! # original ballots
-   Integer :: nb     ! # consolidated ballots
    Integer :: nc     ! # candidates
    Integer :: np     ! # candidates to be elected
    Integer :: mr     ! Max # ranked or rated candidates
@@ -277,11 +275,7 @@ Program Domain_sens
    Integer :: Non(nMt)   ! The index of the non-clustering elected set 
                          !   for each method, <= nonC
 
-   Real    :: tot_wt0    ! Total ballot weight for wtb0 = Sum(wtb0)
-   Real,    Allocatable :: avg0(:)  ! (n0) Average point value for each candidate
-   Integer, Allocatable :: ord0(:)  ! (n0) The ordering of the candidates by avg0
-
-   Real,    Allocatable :: tmp(:), dv(:)
+   Real,    Allocatable :: tmp(:)
    Integer, Allocatable :: jtp(:)
 
    Integer :: El0(5,0:3), El1(5,0:2)
@@ -296,7 +290,7 @@ Program Domain_sens
    ngc(1)= nGen_clust;  ngc(2)= nGen_clust_CM  
    ngc(3)= nGen_clust_NT
 
-   Call Domain_input (District,Party,Noise_pr, pr_out, dst1,dst2, Tourn_union,full)
+   Call Domain_input (District,Party,Noise_pr, pr_out, dst1,dst2, Sens_opt,full)
 
    Open(7, File='RndSeed.txt', IOstat=ios, Status='Old', Action='Read')
      Read(7,*);  n= mx_Dist/4;  j= 1
@@ -317,9 +311,9 @@ Program Domain_sens
      End do
    Close(7)
 
-   District_loop : Do idist= dst1,dst2
+!  Loop over the specified range of districts
 
-     nc_lim= 10
+   District_loop : Do idist= dst1,dst2
 
      Call Read_ballots0 (Trim(District(idist)),idist,nc_lim, nc,np,mr,nb, wtb,ballot)
 
@@ -331,7 +325,7 @@ Program Domain_sens
 
 !    Do the comparisons for each subset of (1...n0) of size of n1 to n2
 
-     If (Tourn_union > 0) then
+     If (Sens_opt > 0) then
        n1= np + 1;  n2= Min(2*np,n0)
      Else
        n1= Max(n0-2,np+1);  n2= n1
@@ -354,6 +348,9 @@ Program Domain_sens
      Call Out ("For min domain size",n1,"to max domain size",n2)
      Call Out ("For # electeds",np, "total # domains",msub)
      Call Out ("# domains of each size, min to max",ncp)
+
+!    Loop over all domain subsets of 1...nc, computing objective data
+!    for each of these domains
 
      Domain_loop0 : Do i= 1,nsub
        nc= subU(0,i);  If (nc < n1) Cycle Domain_loop0
@@ -388,6 +385,10 @@ Program Domain_sens
 
     Allocate(top_elc(0:np,md), dom0(n0,md), mp(md), jtp(md))
     top_elc= 0;  k= 0;  dom0= .false.;  mp= 0;  jtp= 0
+
+!   For each of these domains, output the possible elected subsets 
+!   and their fitness values, recording in top_elc how many times
+!   a subset tops for a domain = domain count top set
    
     Domain_loop1 : Do j= 1,md
       nc= Clust_elc(j)%n;  n= Min(Clust_elc(j)%m,10);  i= Subi(j)
@@ -425,7 +426,10 @@ Program Domain_sens
     Call Out ("# domains for each top elected set",top_elc(0,:tp))
     Call Out ("Mapping of all domains to the top elected sets",mp)
 
-    If (Tourn_union > 0) then  ! Domains = unions of sets to be compared by dominance values
+!   Next compute the dominance formula values Sdv (objective function)
+!   for each domain count top set.
+
+    If (Sens_opt > 0) then  ! Domains = unions of sets to be compared by dominance values
       Sdv= 0
       Top_set_loop : Do k= 1,tp
         dom_k= .false.;  dom_k(top_elc(1:,k))= .true.
@@ -452,7 +456,7 @@ Program Domain_sens
         End do Domain_loop2
       End do Top_set_loop
 
-    Else if (Tourn_union == -1) then ! Domains of size n0-2. Process by comparing dominance values for top sets
+    Else if (Sens_opt == -1) then ! Domains of size n0-2. Process by comparing dominance values for top sets
       dmv= 0
       Top_set_loop1 : Do k= 1,tp-1
         dom_k= .false.;  dom_k(top_elc(1:,k))= .true.
@@ -535,7 +539,7 @@ Program Domain_sens
     Call Out ("# domains for each top set by dominance ordering",top_elc(0,keyD))
     Call Out ("# domains for each top set by domain count ordering",top_elc(0,keyT))
 
-    If (Tourn_union == -1 .and. pr_out > 1) then
+    If (Sens_opt == -1 .and. pr_out > 1) then
       Call Out ("Dominance values for original over subsequent top sets")
       Do k= 1,tp-1
         Call Out ("For original top set",k,ln=1)
@@ -543,27 +547,35 @@ Program Domain_sens
       End do
     End if
 
-!   Record matches of the overall top elected set
+!   Tr_mat adds up matches of the top elected set by 
+!     (-1,1) domain count top set = dominance formula top set
+!     (0,1)  clustering top set   = dominance formula top set
+!     (>0,1) non-clustering top set = dominance formula top set
+
+!     (0,2)  clustering top set   = domain count top set
+!     (>0,2) non-clustering top set = domain count top set
 
     If (tp1 == dm1) Tr_mat(-1,1)= Tr_mat(-1,1) + 1  ! Top set by dominance formula = top set by domain count
 
     Do k= 1,2
-      Do i= 0,nMt                                 ! Matches to clustering &  non-clustering elected sets 
+      Do i= 0,nMt                                   ! Matches to clustering & non-clustering elected sets 
         If (All(elc1(:n5,k) == Elc_pr(:n5,i,idist))) Tr_mat(i,k)= Tr_mat(i,k) + 1
       End do
     End do
 
   End Do District_loop
 
-  Call Out ("For Tourn_union",Tourn_union,ln=1)
+!  Output statistics over districts
+
+  Call Out ("For domain option",Sens_opt,ln=1)
   Call Out ("From district",dst1, "to district",dst2)
-  Call Out ("# matches of 'dominance formula' to 'top set rule'",Tr_mat(-1,1))
+  Call Out ("# matches of 'dominance formula top set' to 'domain count top set'",Tr_mat(-1,1))
 
-  Call Out ("# matches of the 'dominance formula' to top clustering electeds",Tr_mat(0,1),ln=1)
-  Call Out ("# matches of the 'dominance formula' to non-clustering electeds",Tr_mat(1:,1))
+  Call Out ("# matches of the 'dominance formula top set' to clustering top set",Tr_mat(0,1),ln=1)
+  Call Out ("# matches of the 'dominance formula top set' to non-clustering electeds",Tr_mat(1:,1))
 
-  Call Out ("# matches of the 'top set rule' to top clustering electeds",Tr_mat(0,2),ln=1)
-  Call Out ("# matches of the 'top set rule' to non-clustering electeds",Tr_mat(1:,2))
+  Call Out ("# matches of the 'domain count top set' to clustering top set",Tr_mat(0,2),ln=1)
+  Call Out ("# matches of the 'domain count top set' to non-clustering electeds",Tr_mat(1:,2))
   Close(8)
 
 End Program Domain_sens

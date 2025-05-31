@@ -1,7 +1,15 @@
-!  This does pre-processing on district ballot files to get them into a standard form for ranking or rating.
+Program Pre_process 
     
+!  This program does pre-processing on district ballot files to get them into a standard format 
+!  for ranking or rating. It also may perform ballot consolidation, both to reduce the computational 
+!  load by eliminating marginal candidates and to restrict the number of candidates ranked or rated 
+!  by each ballot if that is specified by the user, or to reduce the computation.
  
-Program Pre_process   
+!  For testing weak ranking in PR_clustering.f90, the strongly ranked ballots are perturbed 
+!  so that sometimes more than 1 ballot may be assigned the same ranking.  Likewise, these 
+!  strongly ranked ballots may be perturbed to produce ballots with ratings, given specified 
+!  rating levels with point values from 10.0 to -10.0, which are adjusted to yield ballots 
+!  whose rating point values average out close to 0.
 
    Use Clusters_pre
    Use Types
@@ -26,7 +34,13 @@ Program Pre_process
    Character(10) :: out_file
    Integer       :: i, id, ios, itmp(4)
 
+!  Run input parameters and data. Original ballot data in 'Elections0'.
+!  Other district data in 'Vote_files.txt'.
+
    label= "Pre_opt.txt"
+
+!  Optionally process the ballots only from a range of districts (Dist1 to Dist2)
+!  and limit the # ranked or rated to 'mr_spec' and # rating levels to 'mt_spec'
 
    Open(7, File= Trim(Label), IOmsg=msg, IOstat=ios, Status='Old', Action='Read')
      Read(7,*) label, out_file, pr_out, UVP, Dist1, Dist2
@@ -47,6 +61,8 @@ Program Pre_process
        Read(7,*) 
      End do
    Close(7)
+
+!  Read and preprocess the ballots in each district
    
    District_loop : Do id= Dist1,Dist2
        
@@ -54,5 +70,6 @@ Program Pre_process
 
    End do District_loop
 
-   Close(8)    
+   Close(8)
+
  End Program Pre_process   

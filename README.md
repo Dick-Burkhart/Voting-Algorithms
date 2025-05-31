@@ -44,9 +44,9 @@ over the elected candidates, much like the Borda Count.  All possible sets of  e
 
 Third project overview:
 
-This program tests the sensitivity of PR_clustering to changes in the domain of candidates, either subsets of size nc – 2 of the full set of candidates of size nc, 
-or subsets of np+1 through 2*np, where np candidates are to be elected.  The second method is similar to Tideman’s  Tournament algorithm for Proportional Representation,
-where 2 competing sets of size np are compared on the domain consisting of their union. 
+This program implements uses PR_clustering to test the sensitivity of clustering and non-clustering methods to perturbations or changes in the domain as a subset of the full set of candidates 1...nc. This is related  to Nic Tideman's concept for a pairwise tournament between competing sets of candidates, with winning set to be elected. Except that my clustering full objective functions are used to compare the pairs of sets instead of STV concepts. 
+
+The domains may be either subsets of size nc – 2 or subsets of np+1 through 2*np, where np candidates are to be elected.  The second method is like Tideman’s Tournament algorithm, where 2 competing sets of size np are compared on the domain consisting of their union. 
 
 The point of a sensitivity test is that the best elected set may differ when it is computed for a domain of candidates that is a proper subset of the full set because the proportionality may be affected.  To demonstrate this I compute the full objective function for the elected set on the domain ‘D’ in question. 
 

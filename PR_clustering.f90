@@ -1,55 +1,129 @@
-
-!  This program implements a clustering algorithm for Proportional
-!  Representation (PR), created and tested by Dick Burkhart
-    
-!  The clustering identifies and compares configurations of voting blocks to see which best match the ballots.
-!  Then sets of candidates are compared to see which best match the sizes of the voting blocks according to their
-!  popularity in those blocks. 
-
-!  The program assumes either preferential ballots (ranking) or rating-type ballots where the ratings are converted
-!  to points with a computer-implemented restriction on the number of points per ballot.
-    
-!  The program processes either one or many sets of ballots, which may be in different common formats. Ballots are
-!  pre-processed, the consoliated prior to clustering.
-    
 Program PR_Clustering
 
+!  This program implements a clustering algorithm for Proportional Representation (PR).
+    
+!  The clusters are the voting blocks needed by PR. The number of candidates that 
+!  represent a voting block should equal the size of the voting block, where the 
+!  total vote size is scaled to the number of candidates to be elected. So if this 
+!  number is an integer, the proportionality can only be approximate. In addition,
+!  if the voting block itself is not predefined, then it can only be known
+!  after the clustering how well a particular candidate represents a 
+!  particular voting block, with much ambiguity possible.
+    
+!  To make this problem solvable, at least in an optimization sense, we compute how
+!  well the voters in a voting block rank or rate each candidate. This done by computing,
+!  for each cluster, a mean ranking or rating vector over the candidates, by specifying
+!  a function which converts ranking or rating levels to point values (real numbers
+!  normalized to a maximum value of 10.0 with a value of 0.0 for unranked candidates or 
+!  neutrally rated candidates).
+    
+!  These mean point vectors are also used to distinguish the clusters, since 
+!  strongly correlated mean vectors indicate strongly overlapped clusters,
+!  which should be merged. In addition, clusters that represent too few voters
+!  are deleted by merging them into a group of "independents", along with 
+!  unclustered ballots. This leaves the "regular clusters" (after mering and 
+!  deleting) to represent the voting blocks. 
+    
+!  Each ballot may be partially represented by more than one regular cluster, 
+!  depending on the correlation of that ballot's point vector with the mean point 
+!  vector of the cluster. The resulting cluster memberships of each ballot are 
+!  limited so that their sum over the regular clusters does not exceed 1.0, and 
+!  if it is < 1.0 then the shortfall in membership is assigned to the indepdendents. 
+!  Thus the size of a voting block is the sum of memberships in its cluster 
+!  over all ballots, with any shortfall in the sum of these voting block sizes 
+!  going to the independents. 
+    
+!  This way the group of independents has its own mean 
+!  point vector so that it gives at least a minimal representation to each 
+!  candidate, with this representation possibly significant if only 1 or 2 voting
+!  blocks have been identified. When this happens the independents contribute
+!  to the determination of proportionality.
+    
+!  The key fact here is that the determiniation of the regular clusters is 
+!  non-linear process since the mean point vector of a cluster is computed 
+!  from the memberships of the ballots in that cluster, which are in turn 
+!  revised by the correlations of the ballot mean vectors with the new cluster
+!  mean vector. This iterative process normally converges (called k-means in the
+!  clustering literature), but may require a damped Newton method in certain
+!  cases, or may fail due to stagnation or divergence in a few cases. 
+    
+!  In addition this whole process requires an initial set of clusters to start it off.
+!  In practice this could be some simple method of approximate clustering, or some
+!  randomized guesses. For each electoral district, we start over 20 times
+!  15 of them random initial cluster sets. However all this is still too much computation,
+!  even for ballots that have been consolidated in pre-processing. Thus we do a further
+!  consolidation to 100 or so "slate ballots" (still a partition), centered around slates 
+!  of 1, 2, or 3 top ranked candidates with sufficient summed ballot weight to form 
+!  "slate clusters".
+    
+!  The 20 converged cluster sets may not be all the same, so an objective function is needed
+!  to evaluate them. The key determinant is the number of clusters in a converged cluster set,
+!  but penalty functions allow for a nuanced evaluation. Thus a small cluster picks up a size
+!  penalty as its size approaches the deletion level. Likewise overlapping clusters 
+!  pick up an overlap penalty as their strongest correlation approaches the merge level. 
+!  Otherwise the objective function tends to maximize the sum of the sizes of the clusters 
+!  in the set.
+    
+!  Likewise an objective function is needed to evaluate a possible set of elected candidates
+!  for a given cluster set. To compute the proportionality, we already have the sizes of the 
+!  clusters in the cluster set, but still need to figure out how well a set of candidates 
+!  matches a cluster size, based on the mean values of a cluster for the elected candidates.
+!  This is given by our concept of a "portion", which is simply the product of the candidate's 
+!  mean cluster value times the size of the cluster, normalized so that the sum over all the 
+!  clusters, plus the independents, is 1.0. 
+    
+!  This number represents the portion,or fraction, of that candidate's voting power
+!  which derives from that cluster (the higher the rating and bigger the size
+!  of the cluster, the stronger its representation for that candidate). Thus good 
+!  proportionality means that the sum of the portions over the elected candidates 
+!  for each cluster should closely match the size of that cluster. Our penalties 
+!  begin only when this mismatch exceeds 1/5 of a candidate. In the absence of
+!  proportionality penalties, the our objective is to compute the cluster-size 
+!  averaged mean value (including independents) for each candidate, then sum 
+!  over the elected candidates, much like the Borda Count. All possible sets of 
+!  elected are examined for each of the top tier of cluster sets if there is 
+!  more than one.
+    
    Use Clusters0  ! Contains parameters
    Use Clusters1  ! Contains "Read_ballots" and its subroutines
    Use Clusters2  ! Contains "Consolidate_ballots" and its subroutines
    Use Clusters3  ! Contains "Form_clusters" and its subroutines
    Use Clusters4  ! Contains "Evaluate_candidates" and its subroutines
    Use Clusters5  ! Contains "Write_summary" and its subroutines
-   Use Clusters6  ! Contains "Run_input" and subroutines for run statistics
-                  ! like "Non_clust_stats" and "Sensitivity_parm"
+   Use Clusters6  ! Contains input and  statistical routines
+
    Use Newton_operators
    Use Types
    Use Precisn
    Implicit None
 
-!  Variables for "Run_input":
+!  Data structcures for PR_input and Read_ballots
    
-   Integer                :: dst1, dst2            ! First and last districts to process
-   Integer                :: nDst                  ! # districts to process = dst2 - dst1 + 1
    Character(18), Pointer :: District(:)=>Null()   ! (mx_Dist) List of voting districts to be processed (input)
    Character(3),  Pointer :: Party(:,:)=>Null()    ! (mxCand,mx_Dist) Party affiliation of each candidate for each district, if any
+   Integer,       Save    :: Rnd_seed(2,mx_Dist)   ! Random seed for each district, to be used for 'Mean_rnd'
+   Real,          Pointer :: Noise_pr(:)=>Null()   ! Prior computed values of Noise_cor by district
 
-!  For parameter sensitivity statistics:
-   
-   Integer :: sens_parm    ! Sensitivity parameter to test, from 1 though Nsens
-   Integer :: cntr         ! Sensitivity index from 0 to ndev, with 0 = standard run
-   
-!  Data structures for processed ballots: Read_ballots
+   Integer          :: dst1, dst2, ndst  ! First and last electoral district to be processed, with
+                                         ! ndst= # of this range of districts =  dst2 - dst1 + 1
+   Integer, Save    :: Noise_opt    ! Noise_cor option: # +- deviations from the prior value if > 0.
+                                    ! If = 0, use the prior value of Noise_cor
+                                    ! If < 0, use the currently computed value of Noise_cor
+   Integer, Save    :: STV_opt      ! If > 0, choose the top deviation to favor STV.
+                                    ! If < 0, favor DTV. If = 0, favor neither.
+   Integer          :: sens_parm    ! Sensitivity parameter to be tested: 1...Nsens
+   Integer          :: n_dev        ! # deviations of sens_parm from its standard value
 
+   Integer          :: nb                    ! # ballots in a subdomain
+   Real,    Pointer :: wtb(:)=>Null()        ! (nb) Ballot weights for the subdomain
+   Integer, Pointer :: ballot(:,:)=>Null()   ! (0:mr,nb) Ballots for the subdomain
+                                             !   (0,b)   = n  = # candidates ranked by ballot 'b'
+                                             !   (1:n,b) = these 'n' candidates in ranked order
+   Integer, Pointer :: ballot2(:,:)=>Null()  ! (0:mr,nb) (1:nr,b) =  increasing ranking or rating levels
+                                             !   (0,b) = # positive ratings
    Integer, Pointer :: orig_cand(:)=>Null()  ! (nc) Borda ordering of the original candidates
 
    Real,    Pointer :: pt_val(:)=>Null()     ! (mt) Decreasing point values of the rating levels
-
-   Real,    Pointer :: wtb(:)=>Null()        ! (nb) Ballot weights summing to 'np'
-   Integer, Pointer :: ballot(:,:)=>Null()   ! (0:mr,nb)  (1:nr,b) = candidates in preferential order
-                                             !   (0,b) = 'nr' = # ranked or rated  
-   Integer, Pointer :: ballot2(:,:)=>Null()  ! (0:mr,nb) (1:nr,b) =  increasing ranking or rating levels
-                                             !   (0,b) = # positive ratings 
 
    Real,    Pointer :: global(:,:)=>Null()   ! (nc,5) Global ballot mean (1) & sigma (2) vectors
                                              !    with noise mean (3) and its sigma (4), plus
@@ -57,7 +131,7 @@ Program PR_Clustering
    
 !  Data structures for Non-clustering methods
 
-     Type(Multi_listR) :: Non_clust  ! Data for 'nMt' selected non-clustering methods 'm'
+   Type(Multi_listR) :: Non_clust  ! Data for 'nMt' selected non-clustering methods 'm'
                                      !                to elect multiple candidates.
                                      ! %n = # distinct sets of electeds found for the 
                                      !      current district, = 'nonC'
@@ -80,7 +154,10 @@ Program PR_Clustering
                                      !    (1:,0,:) = cluster averaged mean vector
                                      ! %T1(ncl,ncl,2) = Cluster correlations for STV (:,:,1) and DTV (:,:,2),
                                      !    = 'STV_corr' & 'DTV_corr' .
-!  Data structcures for ballot consolidation into slate clusters
+   Integer :: STV_eq(2,2) ! (:,1) = elected sets 'e' in Elect_dat for STV & DTV = Non_clust%L1(1:2,1)
+                          ! (:,2) = converged cluster sets 'q' for STV & DTV    = Init(19:20)%k
+
+!  Data structcures for 'Consolidate_ballots' (consolidation into slate ballots)
 
    Type(Multi_listD), Pointer :: Memb(:)=>Null() ! (0:nsl) Final slate cluster data
                                                  ! 0 Case: 
@@ -115,9 +192,9 @@ Program PR_Clustering
                                            ! bounds assumed, also non-centered for ranking and 
                                            ! not normalized. (0,:,:) = cluster weight 
 
-!  Additional Variables for "Form_clusters":
+!  Data structcures for "Form_clusters":
      
-     Type(Multi_listR) :: Init(N_init)     ! Initial cluster set data
+   Type(Multi_listR) :: Init(N_init)     ! Initial cluster set data
                                            ! %k = cluster set converged to
                                            ! %n = ncl = # regular clusters
                                            ! %lt(ncl) Mapping of initial to converged clusters 
@@ -139,7 +216,7 @@ Program PR_Clustering
                                            !      (1:,1:,2) = Cluster portions with averaged 
                                            !                  noise zeroed ratings at (1:,0,2)
 
-     Type(Multi_listR) :: Clust_set(N_init)  ! (ncs) Final cluster sets and associated convergence data
+   Type(Multi_listR) :: Clust_set(N_init)  ! (ncs) Final cluster sets and associated convergence data
                                              ! %k   = best initial cluster set that converged to this set
                                              ! %l   = # clusters in this set, including independents = 'ind' = ncl + 1
                                              ! %m   = # initial cluster sets that converged to this cluster set
@@ -209,7 +286,7 @@ Program PR_Clustering
                                              !      (:,0,1)  = Zrate0 * declining regular portion factor
                                              !      (:,0,2)  = Zrate0 = cluster averaged noise zeroed mean vectors
 
-!  Data structures for sets of electeds that could match cluster sets:
+!  Data structures for sets of electeds that match cluster sets:
 
    Type(Multi_listR), Allocatable :: Clust_elect(:)  ! (ncs) Data for sets of electeds associated to each cluster set
                                                      ! %k = index of the best set of electeds %Q0(np,0,1) in Elect_dat
@@ -283,35 +360,28 @@ Program PR_Clustering
    Integer :: dpr(0:mxe)  ! (0:mxf) Elected sets whose best full objective exceeds that of cluster set #1.
                           !         (0) = # such elected sets.
 
-   Real,    Allocatable :: Noise_dist(:,:)  ! (-Noise_opt:Noise_opt,nDst) Deviation ranking noise levels by district = Noise_cor
-   Real,    Allocatable :: Noise_obj(:,:)   ! (-Noise_opt:Noise_opt,nDst) Corresponding clustering objectives
-   Integer, Allocatable :: Noise_ncl(:,:)   ! (-Noise_opt:Noise_opt,nDst) Corresponding # clusters
-   Integer, Allocatable :: Noise_top(:)     ! (nDst) Deviation index of the top clustering objective
-   Real,    Allocatable :: Noise_cor1(:)    ! (nDst) Top noise correlation level by district = Noise_dist(Noise_top(id),id)
-   Real,    Allocatable :: Noise_dif(:,:)   ! (nDst,3)  (id,1) Noise_pr(idist) - Noise_cor, (id,2) Noise_cor1(id) - Noise_cor
+!  Data structures for the optimization of Noise_cor for ranking data:  subtract Noise_cor from 
+!  mean vectors of clusters when correlating them, zero below half this value when computing portions.
+
+   Real,    Allocatable :: Noise_dist(:,:)  ! (-Noise_opt:Noise_opt,ndst) Deviation ranking noise levels by district = Noise_cor
+   Real,    Allocatable :: Noise_obj(:,:)   ! (-Noise_opt:Noise_opt,ndst) Corresponding clustering objectives
+   Integer, Allocatable :: Noise_ncl(:,:)   ! (-Noise_opt:Noise_opt,ndst) Corresponding # clusters
+   Integer, Allocatable :: Noise_top(:)     ! (ndst) Deviation index of the top clustering objective
+   Real,    Allocatable :: Noise_cor1(:)    ! (ndst) Top noise correlation level by district = Noise_dist(Noise_top(id),id)
+   Real,    Allocatable :: Noise_dif(:,:)   ! (ndst,3)  (id,1) Noise_pr(idist) - Noise_cor, (id,2) Noise_cor1(id) - Noise_cor
                                             !           (id,3) Noise_cor1(id) - Noise_pr(idist)
    Integer, Allocatable :: lst(:)           ! (2*Noise_opt+1)
-   Real,        Pointer :: Noise_pr(:)=>Null()  ! (mx_Dist) Prior computed values of Noise_cor
-   Integer, Save        :: Noise_opt        ! Noise_cor option: # +- deviations from the prior value if > 0.
-                                            ! If = 0, use the prior value of Noise_cor
-                                            ! If < 0, use the currently computed value of Noise_cor
-   Integer, Save        :: STV_opt          ! If > 0, choose the top deviation to favor STV.
-                                            ! If < 0, favor DTV. If = 0, favor neither.
-   Real,   Parameter    :: del= 0.025       ! Deviation delta for Noise_cor
-   Real,   Parameter    :: eps= 0.01        ! 
 
-   Integer :: nc_lim 
 
-!  For each district:
+   Logical, Parameter :: Set_rnd_seeds= .false.  ! Random seeds already computed & stored in 'RndSeed.txt'.
+                                                 ! Used to generate  Mean_rnd.
+   Real,   Parameter  :: del= 0.025  ! Deviation delta for Noise_cor
+   Real,   Parameter  :: eps= 0.01   ! For 'lst' list of almost identical Noise_cor values
+   Integer, Save :: nc_lim= 10       ! Max value of 'nc' (may be used to limit the computational load)
 
-   Logical, Parameter   :: Set_rnd_seeds= .false.
-   Integer :: Rnd_seed(2,mx_Dist)  ! Random seed for each district, to be use for 'Mean_rnd'
-
-   Integer :: STV_eq(2,2) ! (:,1) = elected sets 'e' in Elect_dat for STV & DTV = Non_clust%L1(1:2,1)
-                          ! (:,2) = converged cluster sets 'q' for STV & DTV    = Init(19:20)%k
-
+   Integer :: cntr   ! Sensitivity index from 0 to ndev, with 0 = standard run
+   
    Integer :: ncs    ! Total # cluster sets converged to 
-   Integer :: nb     ! # initial ballots
    Integer :: nc0    ! # original candidates
    Integer :: nc     ! # candidates
    Integer :: np     ! # candidates to be elected
@@ -328,14 +398,15 @@ Program PR_Clustering
    Integer :: ind    ! = ncl + 1 = total # clusters, including independents, 
                      ! = last 'cluster in the set
    Integer :: ncyc   ! # convergence updates = index of the final cycle
-   Integer :: irun   ! Index for runs of statistical trials
    Integer :: idist  ! Index for district
 
    Real    :: xm, fac, adj, xns, rnd(3)
    Integer :: i1, i2, id, iq, ml, nd, nr, ns, pl, sl, ios, no1, ns1, nonC, nslat
    Integer :: e, i, j, k, l, m, n, p, q
+
+!  Initial data
  
-   If (Set_rnd_seeds) then
+   If (Set_rnd_seeds) then  ! Generate RndSeed.txt
      Call Random_number (rnd)
      Do id= 1,mx_Dist
        Call Random_number (rnd)
@@ -351,7 +422,7 @@ Program PR_Clustering
          If (k == mx_Dist) Exit;  j= k + 1
        End do
      Close(7)
-   Else
+   Else                     ! Read Rnd_seed from RndSeed.txt
      Open(7, File='RndSeed.txt', IOstat=ios, Status='Old', Action='Read')
        Read(7,*);  n= mx_Dist/4;  j= 1
 
@@ -376,7 +447,9 @@ Program PR_Clustering
    End if
 
    GN_rating= Rating;  GN_dot_fac= Dot_fac
-   nDst= dst2 - dst1 + 1;  max_me= 0
+   ndst= dst2 - dst1 + 1;  max_me= 0
+
+!  Initialize Noise_cor optimization data structures
 
    If (Rating == 1) then
      Noise_cor= 0;  GN_rate_adj= 0
@@ -384,30 +457,32 @@ Program PR_Clustering
      If (Noise_opt > 0) then
        n= Noise_opt;  no1= n+1
      
-       Allocate (Noise_dist(-n:n,nDst), Noise_obj(-n:n,nDst), &
-                 Noise_ncl(-n:n,nDst), Noise_top(nDst),       &
-                 Noise_cor1(nDst), Noise_dif(nDst,3), lst(n+no1))
+       Allocate (Noise_dist(-n:n,ndst), Noise_obj(-n:n,ndst), &
+                 Noise_ncl(-n:n,ndst), Noise_top(ndst),       &
+                 Noise_cor1(ndst), Noise_dif(ndst,3), lst(n+no1))
        Noise_dist= 0;  Noise_obj= 0;  Noise_ncl= 0
        Noise_top= 0;  Noise_cor1= 0;  Noise_dif= 0;  lst= 0
      Else if (Noise_opt < 0) then
-       Allocate (Noise_cor1(nDst));  Noise_cor1= 0
+       Allocate (Noise_cor1(ndst));  Noise_cor1= 0
      End if
    End if
 
-!  Standard statistics and parameter perturbation tests 
+!  Statistics for standard (cntr = 0) sensitivity parameters, the for perturbed values (cntr > 0)
    
-   Call Sensitivity_parm (-1,sens_parm,ndev, dst1,nDst, 0)
+   Call Sensitivity_parm (-1,sens_parm,ndev, dst1,ndst, 0)  ! Overall initialization
 
    Cntr_parm_loop : Do cntr= 0,ndev
 
      Standard= cntr == 0
      nGen_clust= 0;  nGen_clust_CM= 0;  nGen_clust_NT= 0
 
-     Call General_stats (0,dst1,nDst, 0,0,0)
+     Call General_stats (0,dst1,ndst, 0,0,0)  ! Initialization for 'cntr' perturbation
 
-     If (nDst == mx_Dist) Call General_data (0,nDst)
+     If (ndst == mx_Dist) Call General_data (0,ndst)
 
-     Call Sensitivity_parm (0,sens_parm,ndev, dst1,nDst, cntr)
+     Call Sensitivity_parm (0,sens_parm,ndev, dst1,ndst, cntr)  ! Initialization for 'cntr' perturbation
+
+!    Compute stats over the range of districts for the 'cntr' perturbation
 
      District_loop : Do idist= dst1,dst2
        
@@ -415,11 +490,8 @@ Program PR_Clustering
        ngc(3)= nGen_clust_NT
        id= idist - (dst1 - 1)
 
-       If (idist == 12) then
-         nc_lim= 8
-       Else
-         nc_lim= nc0
-       End if
+!      Ballot input ('ballot' & 'ballot2'). Also compute non-clustering elected sets, 
+!      storing data in 'Non_clust''
 
        Call Read_ballots (Trim(District(idist)),idist,nc_lim, nc0,nc,np,mr,mrp, nb,pt_val, &
                           orig_cand,global, wtb,ballot,ballot2, Non_clust)
@@ -427,10 +499,13 @@ Program PR_Clustering
        mt= Size(pt_val);  mrn= mr - mrp
        nr= Min(np+2,7);  Allocate(Mean_rnd(0:nc,nr,N_cand))
 
+!      Noise_cor optimization for ranking data only (not used for rating data)
+
        If (Rating < 1) then
          If (Noise_opt > 0) then ! Use Noise_cor = top deviation from best prior
 
-!          Record deviations from the current Noise_cor
+!          Record deviations from the current Noise_cor, looking for those
+!          with the top full objection Noise_obj
 
            Noise_dif(id,1)= Noise_pr(idist) - Noise_cor
            Noise_dif(id,2)= Noise_cor
@@ -487,15 +562,18 @@ Program PR_Clustering
            Noise_top(id)= i;  Noise_cor= Noise_dist(i,id)
            Noise_por= Por_fac * Noise_cor;  GN_rate_adj= Noise_cor
 
-         Else if (Noise_opt == 0) then ! Use best prior 'Noise_cor'
+         Else if (Noise_opt == 0) then ! Use best prior 'Noise_cor', stored in Noise_pr
            Noise_cor= Noise_pr(idist)
            Noise_por= Por_fac * Noise_cor;  GN_rate_adj= Noise_cor
      
-         Else   ! Use the statistically computed current 'Noise_cor'
+         Else   ! Use the statistically computed current 'Noise_cor' (from Read_ballots)
            Noise_cor1(id)= Noise_cor
            Noise_por= Por_fac * Noise_cor;  GN_rate_adj= Noise_cor
          End if
        End if
+
+!      Compute the slate_ballots and corresponding slate clusters,
+!      stored in 'Memb'. Use to generate the random initial cluster sets 'Mean_rnd'
        
        Call Random_seed (Put = Rnd_seed(:,idist))
 
@@ -503,11 +581,19 @@ Program PR_Clustering
                                  wtb,ballot(:,:nb),ballot2(:,:nb), &
                                  nr,nsl,Memb, Mean_rnd)
 
+!      Converge the random initial cluster sets 'Mean_rnd', plus several
+!      deterministic non-clustering methods of election, storing the 
+!      initial set data in 'Init' and converged data in 'Clust_set'
+
        Call Form_clusters (idist,nc,np, Memb, Mean_rnd(:,:nr,:), &
                            Non_clust,Init, ncs,Clust_set)
 
        DeAllocate(Mean_rnd);  Call DeAlloc_Multi_list_ar (Memb);  DeAllocate(Memb)
        Call DeAlloc_Multi_list_ar (LS_Memb);  DeAllocate(LS_Memb)
+
+!      Compute the fitness and associated data for possible elected sets
+!      for each converged cluster set found by 'Form_clusters'. Store data
+!      in 'Clust_elect' and 'Clust_elect'
 
        nonC= Size(Non_clust%L0,2);  Allocate (Clust_elect(ncs), Non_clust%L2(nonC,ncs))
 
@@ -530,21 +616,24 @@ Program PR_Clustering
        Call Out ("Top elected set objectives",Elect_dat(1)%M1(:,1))
        Call Out (-1,"STV_eq",STV_eq)
 
+!      Print out detailed district cluster set and elected set data for inspection
+
        ml= Maxval(Clust_set%l);  nd= dpr(0)
 
        Call Write_summary (Trim(District(idist)),idist, np,nc,mr,mrn, ml,ncs,me, &
                            orig_cand,Party(:nc0,idist), Clust_set(:ncs),         &
                            Clust_elect,Elect_dat(:me), Non_clust,Init, dpr(0:nd))
          
-!      Accumulate the statistics for the current run
+!      Accumulate the statistics for the current run, first 'General_stats',
+!      then stats for the perturbed sensitivity parameters
 
-       If (nDst == mx_Dist) Call General_data (1,nDst, Non_clust,Elect_dat)
+       If (ndst == mx_Dist) Call General_data (1,ndst, Non_clust,Elect_dat)
 
-       Call General_stats (1,dst1,nDst,idist, np,ncs, Non_clust, Init, &
+       Call General_stats (1,dst1,ndst,idist, np,ncs, Non_clust, Init, &
                            Clust_set(:ncs), Clust_elect,Elect_dat(:me))
 
        e= Non_clust%L1(1,1)
-       Call Sensitivity_parm (1,sens_parm,ndev, dst1,nDst, cntr, idist, &
+       Call Sensitivity_parm (1,sens_parm,ndev, dst1,ndst, cntr, idist, &
                               STV_eq, Clust_set(:ncs),Elect_dat(:me))
        
        Call DeAlloc_Multi_list_ar (Init)
@@ -555,15 +644,18 @@ Program PR_Clustering
 
      End do District_loop
 
-!    Compute the final statistics for the current run
+!    Compute the final statistics for the general statistics
+!    and current parameter perturbations
 
      Call Out ("Max # elected sets over all runs",max_me, ln=1)
 
-     If (nDst == mx_Dist) Call General_data (2,nDst)
+     If (ndst == mx_Dist) Call General_data (2,ndst)
 
-     Call General_stats (2,dst1,nDst, 0,0,0)
+     Call General_stats (2,dst1,ndst, 0,0,0)
 
-     Call Sensitivity_parm (2,sens_parm,ndev, dst1,nDst, cntr)
+     Call Sensitivity_parm (2,sens_parm,ndev, dst1,ndst, cntr)
+
+!    'Noise_cor' optimization results
 
      If (Rating < 1) then
        If (Noise_opt > 0) then
@@ -572,7 +664,7 @@ Program PR_Clustering
          Call Out (-1,"Their # regular clusters",Noise_ncl)
          Call Out ("The top deviation",Noise_top)
 
-         Do id= 1,nDst
+         Do id= 1,ndst
            idist= (dst1-1) + id;  i= Noise_top(id)
            Noise_cor1(id) = Noise_dist(i,id)
            Noise_dif(id,2)= Noise_cor1(id) - Noise_dif(id,2)
@@ -591,7 +683,6 @@ Program PR_Clustering
      End if
 
    End do Cntr_parm_loop
-
 
    Close(8)
    

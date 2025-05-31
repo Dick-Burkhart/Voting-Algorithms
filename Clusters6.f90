@@ -129,7 +129,7 @@ Module Clusters6
    End Subroutine PR_input
 
 
-   Subroutine Domain_input (District,Party,Noise_pr, pr_out, dst1,dst2, Tourn_union,full)
+   Subroutine Domain_input (District,Party,Noise_pr, pr_out, dst1,dst2, Sens_opt,full)
 
 !    Parameter input for 'Tourn_rem'
    
@@ -141,9 +141,10 @@ Module Clusters6
      Real,       Intent(out) :: pr_out        ! Specifies level of diagnostic print out to 'out_file'
      Integer,    Intent(out) :: dst1          ! First district to process
      Integer,    Intent(out) :: dst2          ! Last  district to process
-     Integer,    Intent(out) :: Tourn_union   ! 1 = Make all domains = union of 2 possible elected sets of size 'np'
-                                              ! < 0 Domains = all subsets of size n0-2 of a domain of size n0,
-                                              !     or other domain or processing options 
+     Integer,    Intent(out) :: Sens_opt      ! 1   : Domains = union of 2 possible elected sets of size 'np'
+                                              ! < 0 : Domains = all subsets of size n0-2 of a domain of size n0,
+                                              !  -1 : Process by comparing dominance values of top sets (dmv => Sdv)
+                                              !  -2 : Process by summing dominance values for each top set (Sdv)
      Real,       Intent(out) :: full          ! Limit parameter for the rising cosine dominance function
 ! Local:
      Integer,  Allocatable :: D_data(:,:)     ! (4,mxDist) For each district
@@ -169,7 +170,7 @@ Module Clusters6
      Close(7)
 
      Open(7, File='Domain_opt.txt', IOstat=ios, Status='Old', Action='Read')
-       Read(7,*) label1, out_file, pr_out, dst1,dst2, Tourn_union, full
+       Read(7,*) label1, out_file, pr_out, dst1,dst2, Sens_opt, full
      Close(7)
      
      Open(7, File='Data.txt', IOstat=ios, Status='Old', Action='Read')
@@ -182,7 +183,7 @@ Module Clusters6
 
      Open(8, File=Outdat//out_file, IOstat=ios, Status='Replace', Action='Write')
      Call Out ("")
-     Write (8,'(A, 2X,A, F5.1, 2I4, 2X,I4,F7.2)') label1, out_file, pr_out, dst1,dst2, Tourn_union, full
+     Write (8,'(A, 2X,A, F5.1, 2I4, 2X,I4,F7.2)') label1, out_file, pr_out, dst1,dst2, Sens_opt, full
 
      Call Out ("Standard Run Parameters")
      Call Out ("Parameters for 'Read_ballots'")
